@@ -1,0 +1,32 @@
+[
+  {
+    "id": "rec_001",
+    "name": "AWS EC2 Cron Worker",
+    "category": "Background Task",
+    "environment": "AWS-Mumbai-ap-south-1",
+    "status": "Active",
+    "ipBinding": "Elastic IP (Allocated)",
+    "description": "Daily automated billing reconciliation worker instance.",
+    "createdAt": "2026-10-06T10:00:00.000Z"
+  },
+  {
+    "id": "rec_002",
+    "name": "Payment Gateway Webhook Listener",
+    "category": "API Service",
+    "environment": "Production",
+    "status": "Active",
+    "ipBinding": "Static IP Whitelisted",
+    "description": "Secure listener for incoming banking settlement webhooks.",
+    "createdAt": "2026-10-06T11:30:00.000Z"
+  },
+  {
+    "id": "rec_003",
+    "name": "Database Replication Tunnel",
+    "category": "Infrastructure",
+    "environment": "VPC Peering",
+    "status": "Maintenance",
+    "ipBinding": "Direct VPC EIP",
+    "description": "Cross-region backup synchronization pipeline.",
+    "createdAt": "2026-10-06T12:15:00.000Z"
+  }
+]

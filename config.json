@@ -1,0 +1,7 @@
+{
+  "enableWhitelist": true,
+  "allowedIps": [
+    "127.0.0.1"
+  ],
+  "elasticIpNotes": "Sirf 192.168.1.22 ko access milega. Koi aur IP (jaise 192.168.1.2 ya 127.0.0.1) turant 403 Forbidden me block hogi."
+}

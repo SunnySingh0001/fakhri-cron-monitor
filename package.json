@@ -1,0 +1,9 @@
+{
+  "name": "fakhri-cron-monitor",
+  "version": "1.0.0",
+  "description": "Fakhri IT - Cron API & Health Monitoring Dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  }
+}

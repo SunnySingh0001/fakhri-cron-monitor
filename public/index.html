@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AWS Elastic IP & Static IP Whitelist CRUD Monitor</title>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0b0f19;
+            color: #f1f5f9;
+        }
+        .glass-panel {
+            background: rgba(17, 24, 39, 0.75);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-panel:hover {
+            border-color: rgba(99, 102, 241, 0.25);
+        }
+        .glow-green {
+            box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.3);
+        }
+        .glow-red {
+            box-shadow: 0 0 25px -5px rgba(239, 68, 68, 0.35);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased text-slate-100">
+
+    <!-- Top Header -->
+    <header class="glass-panel sticky top-0 z-40 border-b border-slate-800/80 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    Static & AWS Elastic IP Security Monitor
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">v2.0 Protected</span>
+                </h1>
+                <p class="text-xs text-slate-400">AWS Elastic IP Verification & Whitelisted CRUD Engine</p>
+            </div>
+        </div>
+
+        <!-- Global Status Badges & Quick Action Buttons -->
+        <div class="flex items-center gap-3">
+            <!-- Access Security Gate Status Indicator -->
+            <div id="gateStatusBadge" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium border bg-slate-800 text-slate-400 border-slate-700 transition-all duration-300">
+                <span id="gateStatusDot" class="w-2.5 h-2.5 rounded-full bg-slate-500 animate-pulse"></span>
+                <span id="gateStatusText">Verifying IP Access...</span>
+            </div>
+
+            <!-- Docs Button -->
+            <button onclick="openDocsModal()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                API Docs & AWS Guide
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 space-y-6">
+
+        <!-- Top Section: IP Diagnosis & AWS Elastic IP Inspection Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            <!-- Card 1: Your Current Detected IP -->
+            <div class="glass-panel rounded-2xl p-5 relative overflow-hidden transition-all duration-300" id="clientIpCard">
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+                    <span class="font-medium tracking-wide flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-sky-400"></span>
+                        YOUR CALLER IP (DETECTED)
+                    </span>
+                    <span id="ipMatchStatusBadge" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">Checking</span>
+                </div>
+                <div class="text-2xl font-bold font-mono text-white tracking-wide" id="detectedClientIp">
+                    ---.---.---.---
+                </div>
+                <p class="text-xs text-slate-400 mt-2 flex items-center justify-between">
+                    <span>Target Endpoint:</span>
+                    <span class="font-mono text-slate-300">/api/records/*</span>
+                </p>
+                <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                    <span class="text-[11px] text-slate-400">Simulation Override:</span>
+                    <div class="flex items-center gap-1.5">
+                        <input type="text" id="simulatedIpInput" placeholder="e.g. 13.235.40.1" class="text-xs font-mono bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200 w-32 focus:outline-none focus:border-indigo-500">
+                        <button onclick="applySimulatedIp()" title="Apply simulated caller IP" class="text-xs px-2 py-1 bg-indigo-600 hover:bg-indigo-500 rounded text-white font-medium">Test</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 2: Server Public IP & AWS Elastic IP Presence -->
+            <div class="glass-panel rounded-2xl p-5 relative overflow-hidden">
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+                    <span class="font-medium tracking-wide flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-violet-400"></span>
+                        SERVER PUBLIC STATIC IP
+                    </span>
+                    <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-violet-500/10 text-violet-400 border border-violet-500/20">AWS Compatible</span>
+                </div>
+                <div class="text-2xl font-bold font-mono text-white tracking-wide" id="serverPublicIp">
+                    Fetching...
+                </div>
+                <p class="text-xs text-slate-400 mt-2 flex items-center justify-between">
+                    <span>Local Network IP:</span>
+                    <span class="font-mono text-slate-300" id="serverLocalIp">127.0.0.1</span>
+                </p>
+                <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                    <span class="text-slate-400">Whitelist Enforcement:</span>
+                    <button onclick="toggleWhitelist()" id="whitelistToggleBtn" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        ENABLED
+                    </button>
+                </div>
+            </div>
+
+            <!-- Card 3: Quick Action Testing & Chaos Simulation -->
+            <div class="glass-panel rounded-2xl p-5 flex flex-col justify-between">
+                <div>
+                    <div class="text-xs font-medium text-slate-400 mb-2 flex items-center justify-between">
+                        <span class="tracking-wide">TESTING & SIMULATION</span>
+                        <span class="text-[11px] text-amber-400 flex items-center gap-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            Instant Testing
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Aap bina doosre computer par gaye yahan se live IP blocking (403 Forbidden) test kar sakte hain:
+                    </p>
+                </div>
+                <div class="grid grid-cols-2 gap-2 mt-3">
+                    <button onclick="testBlockMyIp()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 flex items-center justify-center gap-1.5 transition">
+                        <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"/></svg>
+                        Block My IP (Test 403)
+                    </button>
+                    <button onclick="restoreMyIp()" class="px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 flex items-center justify-center gap-1.5 transition">
+                        <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                        Restore My IP (Allow)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Section: Whitelist Management & CRUD System Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Left Col (1): Allowed Static / Elastic IPs List -->
+            <div class="glass-panel rounded-2xl p-5 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                        </div>
+                        <h2 class="text-sm font-bold text-white tracking-wide">Allowed IPs (Whitelist)</h2>
+                    </div>
+                    <span id="whitelistCount" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">0 IPs</span>
+                </div>
+
+                <!-- Add IP Form -->
+                <form id="addIpForm" onsubmit="handleAddIp(event)" class="flex gap-2">
+                    <input type="text" id="newIpInput" placeholder="Enter IP (e.g. 13.235.40.10)" required class="flex-1 text-xs font-mono bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    <button type="submit" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1 shadow-lg shadow-indigo-600/20">
+                        + Add IP
+                    </button>
+                </form>
+
+                <!-- List of IPs -->
+                <div class="space-y-2 max-h-[340px] overflow-y-auto pr-1" id="allowedIpsList">
+                    <!-- Dynamic IP badges will be rendered here -->
+                </div>
+
+                <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                    <span>Want default demo state?</span>
+                    <button onclick="resetDemoSystem()" class="text-indigo-400 hover:text-indigo-300 underline font-medium">Reset Demo Config</button>
+                </div>
+            </div>
+
+            <!-- Right Col (2): Protected CRUD Interface (/api/records) -->
+            <div class="lg:col-span-2 glass-panel rounded-2xl p-5 flex flex-col space-y-4">
+                
+                <!-- CRUD Header with Search & Add Button -->
+                <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-sm font-bold text-white tracking-wide">Protected Records (CRUD API)</h2>
+                            <p class="text-[11px] text-slate-400">Only accessible when your IP is whitelisted</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="openCreateModal()" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition shadow-lg shadow-emerald-600/20">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                            Create Record
+                        </button>
+                        <button onclick="fetchRecords()" class="p-1.5 rounded-xl text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 transition" title="Refresh Table">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Access Warning Banner (if IP blocked) -->
+                <div id="accessBlockedBanner" class="hidden p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3">
+                    <svg class="w-5 h-5 text-rose-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    <div>
+                        <h4 class="text-xs font-bold text-rose-300">HTTP 403 Forbidden — Access Denied</h4>
+                        <p class="text-xs text-rose-200/80 mt-0.5 leading-relaxed">
+                            Aapki current IP (<span class="font-mono font-bold" id="bannerBlockedIp">---</span>) whitelist me nahi hai. CRUD requests block ho rahi hain. Isko theek karne ke liye <strong>"Restore My IP"</strong> click karein ya apne IP ko whitelist me add karein.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Search Input -->
+                <div class="relative">
+                    <input type="text" id="recordSearchInput" oninput="handleSearch(this.value)" placeholder="Search records by name, category, or environment..." class="w-full text-xs bg-slate-900 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500">
+                    <svg class="w-4 h-4 text-slate-500 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                </div>
+
+                <!-- Records Table -->
+                <div class="overflow-x-auto rounded-xl border border-slate-800/80 flex-1 min-h-[220px]">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-slate-900/80 text-slate-400 font-semibold uppercase tracking-wider border-b border-slate-800">
+                            <tr>
+                                <th class="py-2.5 px-3">Record Details</th>
+                                <th class="py-2.5 px-3">Category</th>
+                                <th class="py-2.5 px-3">Environment</th>
+                                <th class="py-2.5 px-3">Status</th>
+                                <th class="py-2.5 px-3 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsTableBody" class="divide-y divide-slate-800 text-slate-300">
+                            <!-- Dynamic records render here -->
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Bottom Section: Live Traffic & Verification Terminal -->
+        <div class="glass-panel rounded-2xl p-5 space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                    <h3 class="text-sm font-bold text-white tracking-wide">Live Request & Security Enforcement Logs</h3>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="clearLogs()" class="text-xs text-slate-400 hover:text-slate-200 transition">Clear Log</button>
+                </div>
+            </div>
+            <div id="liveLogsConsole" class="bg-slate-950 rounded-xl p-3.5 font-mono text-[11px] h-40 overflow-y-auto space-y-1 text-slate-300 border border-slate-800/80">
+                <div class="text-slate-500">[System Ready] Monitoring incoming requests and IP validation gates...</div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal 1: Create / Edit Record Modal -->
+    <div id="recordModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel bg-slate-900 rounded-2xl max-w-md w-full p-6 border border-slate-700 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-white" id="modalTitle">Create New Record</h3>
+                <button onclick="closeRecordModal()" class="text-slate-400 hover:text-white">&times;</button>
+            </div>
+            <form id="recordForm" onsubmit="handleRecordSubmit(event)" class="space-y-3">
+                <input type="hidden" id="recordIdInput">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Record Name / Task *</label>
+                    <input type="text" id="recordNameInput" required placeholder="e.g. AWS Production Worker" class="w-full text-xs bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Category</label>
+                        <select id="recordCategoryInput" class="w-full text-xs bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+                            <option value="Background Task">Background Task</option>
+                            <option value="API Service">API Service</option>
+                            <option value="Infrastructure">Infrastructure</option>
+                            <option value="Database">Database</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">Environment</label>
+                        <select id="recordEnvInput" class="w-full text-xs bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+                            <option value="AWS-Production">AWS-Production</option>
+                            <option value="AWS-EC2-EIP">AWS-EC2-EIP</option>
+                            <option value="Staging">Staging</option>
+                            <option value="Local-Dev">Local-Dev</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Status</label>
+                    <select id="recordStatusInput" class="w-full text-xs bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+                        <option value="Active">Active</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Disabled">Disabled</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Description (Optional)</label>
+                    <textarea id="recordDescInput" rows="2" placeholder="Brief notes about this service..." class="w-full text-xs bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500"></textarea>
+                </div>
+                <div class="pt-3 flex justify-end gap-2 border-t border-slate-800">
+                    <button type="button" onclick="closeRecordModal()" class="px-4 py-2 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-lg shadow-emerald-600/20" id="modalSubmitBtn">Save Record</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: API Documentation & AWS Elastic IP Verification Guide -->
+    <div id="docsModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="glass-panel bg-slate-900 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col border border-slate-700 shadow-2xl">
+            <div class="flex items-center justify-between border-b border-slate-800 p-5">
+                <div class="flex items-center gap-2">
+                    <span class="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                    </span>
+                    <h3 class="text-base font-bold text-white">API Documentation & AWS Elastic IP Verification Guide</h3>
+                </div>
+                <button onclick="closeDocsModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto space-y-6 text-xs text-slate-300 leading-relaxed font-sans">
+                <!-- Section 1 -->
+                <div class="space-y-2">
+                    <h4 class="text-sm font-bold text-indigo-400">1. AWS Elastic IP Kaise Verify Karein?</h4>
+                    <p>
+                        Jab aap AWS EC2 par koi application ya cron job chalate hain aur chahte hain ki wo is API ko call kare, toh:
+                    </p>
+                    <ol class="list-decimal pl-5 space-y-1 text-slate-300">
+                        <li>Apne AWS Console me jakar apne EC2 instance par <strong>Elastic IP</strong> allocate aur associate karein (e.g. <code class="text-amber-400 font-mono">13.235.40.10</code>).</li>
+                        <li>Is dashboard ke <strong>"Allowed IPs"</strong> card me apna wahi AWS Elastic IP add karein.</li>
+                        <li>Apne AWS EC2 instance ke terminal me SSH karke ye command run karein:</li>
+                    </ol>
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-emerald-400">
+                        curl -X GET "http://&lt;YOUR_SERVER_IP&gt;:4000/api/records"
+                    </div>
+                    <p>
+                        <strong>Expected Output:</strong> Agar EC2 instance ki Elastic IP match hoti hai toh <strong>HTTP 200 OK</strong> aayega. Agar Elastic IP associate nahi hui ya doosre IP se call gaya toh <strong>HTTP 403 Forbidden</strong> aayega.
+                    </p>
+                </div>
+
+                <!-- Section 2 -->
+                <div class="space-y-2">
+                    <h4 class="text-sm font-bold text-indigo-400">2. Protected CRUD Endpoints Reference</h4>
+                    <div class="space-y-3 font-mono">
+                        <div class="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                            <div class="flex items-center justify-between text-emerald-400 font-bold mb-1">
+                                <span>GET /api/records</span>
+                                <span class="text-[10px] text-slate-400">Fetch All Records</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 font-sans">Returns list of all records. Blocked with 403 if IP is not whitelisted.</p>
+                        </div>
+
+                        <div class="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                            <div class="flex items-center justify-between text-sky-400 font-bold mb-1">
+                                <span>POST /api/records</span>
+                                <span class="text-[10px] text-slate-400">Create New Record</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 font-sans">Payload: <code>{ "name": "Task 1", "category": "API", "environment": "AWS" }</code></p>
+                        </div>
+
+                        <div class="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                            <div class="flex items-center justify-between text-amber-400 font-bold mb-1">
+                                <span>PUT /api/records/:id</span>
+                                <span class="text-[10px] text-slate-400">Update Record</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 font-sans">Updates existing record by ID.</p>
+                        </div>
+
+                        <div class="p-3 bg-slate-950 rounded-lg border border-slate-800">
+                            <div class="flex items-center justify-between text-rose-400 font-bold mb-1">
+                                <span>DELETE /api/records/:id</span>
+                                <span class="text-[10px] text-slate-400">Delete Record</span>
+                            </div>
+                            <p class="text-[11px] text-slate-400 font-sans">Deletes record by ID.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3 -->
+                <div class="space-y-2">
+                    <h4 class="text-sm font-bold text-indigo-400">3. Terminal cURL Simulation Command</h4>
+                    <p>Testing ke liye custom header <code class="text-amber-400 font-mono">x-simulated-ip</code> bhej kar kisi bhi IP se simulation test kiya ja sakta hai:</p>
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 font-mono text-emerald-400">
+                        # Test with authorized IP (Returns 200 OK)<br>
+                        curl -H "x-simulated-ip: 127.0.0.1" http://localhost:4000/api/records<br><br>
+                        # Test with unauthorized IP (Returns 403 Forbidden)<br>
+                        curl -H "x-simulated-ip: 198.51.100.99" http://localhost:4000/api/records
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-slate-800 p-4 flex justify-end">
+                <button onclick="closeDocsModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white font-medium text-xs">Close Guide</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Frontend Logic -->
+    <script>
+        let currentDetectedIp = '';
+        let simulatedIp = '';
+        let allRecords = [];
+        let systemConfig = { allowedIps: [], enableWhitelist: true };
+
+        // Logger helper
+        function addLog(message, status = 'info') {
+            const consoleBox = document.getElementById('liveLogsConsole');
+            const time = new Date().toLocaleTimeString();
+            let color = 'text-slate-300';
+            if (status === 'success') color = 'text-emerald-400';
+            if (status === 'error') color = 'text-rose-400';
+            if (status === 'warn') color = 'text-amber-400';
+
+            const line = document.createElement('div');
+            line.className = `flex items-start gap-2 ${color}`;
+            line.innerHTML = `<span class="text-slate-600 shrink-0">[${time}]</span> <span>${message}</span>`;
+            consoleBox.appendChild(line);
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('liveLogsConsole').innerHTML = '';
+            addLog('Console cleared.');
+        }
+
+        // Custom Fetch with Simulated IP support
+        async function apiFetch(url, options = {}) {
+            options.headers = options.headers || {};
+            if (simulatedIp) {
+                options.headers['x-simulated-ip'] = simulatedIp;
+            }
+            return fetch(url, options);
+        }
+
+        // Fetch System & Network Info
+        async function fetchNetworkInfo() {
+            try {
+                const res = await apiFetch('/api/system/network-info');
+                const data = await res.json();
+                systemConfig = data;
+
+                currentDetectedIp = data.detectedClientIp;
+                document.getElementById('detectedClientIp').innerText = currentDetectedIp || '127.0.0.1';
+                document.getElementById('serverPublicIp').innerText = data.serverPublicIp || 'Detecting...';
+                document.getElementById('serverLocalIp').innerText = (data.serverLocalIps && data.serverLocalIps[0]) || '127.0.0.1';
+
+                // Update Whitelist count
+                document.getElementById('whitelistCount').innerText = `${data.allowedIps.length} Allowed`;
+
+                // Update Status Gate
+                updateGateStatus(data.isAccessGranted);
+
+                // Render Whitelist list
+                renderAllowedIps(data.allowedIps);
+
+                // Render Whitelist toggle
+                const toggleBtn = document.getElementById('whitelistToggleBtn');
+                if (data.enableWhitelist) {
+                    toggleBtn.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                    toggleBtn.innerText = "ENABLED";
+                } else {
+                    toggleBtn.className = "px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-500/20 text-rose-400 border border-rose-500/30";
+                    toggleBtn.innerText = "DISABLED";
+                }
+            } catch (err) {
+                addLog(`Failed to fetch system network info: ${err.message}`, 'error');
+            }
+        }
+
+        // Update Gate Status UI
+        function updateGateStatus(isGranted) {
+            const badge = document.getElementById('gateStatusBadge');
+            const dot = document.getElementById('gateStatusDot');
+            const text = document.getElementById('gateStatusText');
+            const matchBadge = document.getElementById('ipMatchStatusBadge');
+            const blockedBanner = document.getElementById('accessBlockedBanner');
+            const clientCard = document.getElementById('clientIpCard');
+
+            if (isGranted) {
+                badge.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 glow-green transition-all duration-300";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse";
+                text.innerText = "Access Granted (IP Matched)";
+                
+                matchBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                matchBadge.innerText = "MATCHED";
+
+                blockedBanner.classList.add('hidden');
+                clientCard.classList.remove('glow-red');
+                clientCard.classList.add('glow-green');
+            } else {
+                badge.className = "flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium border bg-rose-500/10 text-rose-400 border-rose-500/30 glow-red transition-all duration-300";
+                dot.className = "w-2.5 h-2.5 rounded-full bg-rose-400 animate-pulse";
+                text.innerText = "Access Blocked (403 Forbidden)";
+
+                matchBadge.className = "px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30";
+                matchBadge.innerText = "BLOCKED";
+
+                document.getElementById('bannerBlockedIp').innerText = simulatedIp || currentDetectedIp;
+                blockedBanner.classList.remove('hidden');
+                clientCard.classList.remove('glow-green');
+                clientCard.classList.add('glow-red');
+            }
+        }
+
+        // Render Allowed IPs list
+        function renderAllowedIps(ips) {
+            const container = document.getElementById('allowedIpsList');
+            if (!ips || ips.length === 0) {
+                container.innerHTML = '<div class="text-xs text-slate-500 italic p-2">No allowed IPs configured.</div>';
+                return;
+            }
+
+            container.innerHTML = ips.map(ip => {
+                const isCurrent = (ip === currentDetectedIp);
+                return `
+                    <div class="flex items-center justify-between p-2 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-mono group hover:border-slate-700 transition">
+                        <div class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full ${isCurrent ? 'bg-emerald-400' : 'bg-slate-500'}"></span>
+                            <span class="${isCurrent ? 'text-emerald-300 font-semibold' : 'text-slate-300'}">${ip}</span>
+                            ${isCurrent ? '<span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase font-sans">You</span>' : ''}
+                        </div>
+                        <button onclick="removeAllowedIp('${ip}')" class="text-slate-500 hover:text-rose-400 p-1 transition" title="Remove IP">&times;</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Add IP handler
+        async function handleAddIp(e) {
+            e.preventDefault();
+            const input = document.getElementById('newIpInput');
+            const ip = input.value.trim();
+            if (!ip) return;
+
+            addLog(`Adding IP to whitelist: ${ip}`);
+            try {
+                const res = await fetch('/api/system/allowed-ips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'add', ip })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    addLog(`IP ${ip} added successfully to whitelist`, 'success');
+                    input.value = '';
+                    await fetchNetworkInfo();
+                    await fetchRecords();
+                }
+            } catch (err) {
+                addLog(`Error adding IP: ${err.message}`, 'error');
+            }
+        }
+
+        // Remove IP handler
+        async function removeAllowedIp(ip) {
+            addLog(`Removing IP from whitelist: ${ip}`, 'warn');
+            try {
+                const res = await fetch('/api/system/allowed-ips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'remove', ip })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    addLog(`IP ${ip} removed from whitelist`, 'success');
+                    await fetchNetworkInfo();
+                    await fetchRecords();
+                }
+            } catch (err) {
+                addLog(`Error removing IP: ${err.message}`, 'error');
+            }
+        }
+
+        // Toggle Whitelist On/Off
+        async function toggleWhitelist() {
+            const newState = !systemConfig.enableWhitelist;
+            try {
+                const res = await fetch('/api/system/allowed-ips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enableWhitelist: newState })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    addLog(`Whitelist enforcement set to: ${newState ? 'ENABLED' : 'DISABLED'}`, 'warn');
+                    await fetchNetworkInfo();
+                    await fetchRecords();
+                }
+            } catch (err) {
+                addLog(`Failed to toggle whitelist: ${err.message}`, 'error');
+            }
+        }
+
+        // Test Blocking My IP
+        async function testBlockMyIp() {
+            addLog(`Simulating Blocked State: removing ${currentDetectedIp} from whitelist`, 'warn');
+            try {
+                const updatedList = (systemConfig.allowedIps || []).filter(ip => ip !== currentDetectedIp && ip !== '127.0.0.1' && ip !== '::1');
+                if (updatedList.length === 0) updatedList.push('198.51.100.1'); // Keep fake IP
+                const res = await fetch('/api/system/allowed-ips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ allowedIps: updatedList, enableWhitelist: true })
+                });
+                addLog(`Local IPs removed from whitelist. Now requesting CRUD records...`, 'warn');
+                await fetchNetworkInfo();
+                await fetchRecords();
+            } catch (err) {
+                addLog(`Error during test block: ${err.message}`, 'error');
+            }
+        }
+
+        // Restore My IP
+        async function restoreMyIp() {
+            addLog(`Restoring current IP (${currentDetectedIp}) to whitelist`, 'info');
+            try {
+                const updatedList = [...(systemConfig.allowedIps || []), currentDetectedIp, '127.0.0.1', '::1'];
+                const res = await fetch('/api/system/allowed-ips', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ allowedIps: updatedList, enableWhitelist: true })
+                });
+                addLog(`Current IP successfully restored!`, 'success');
+                await fetchNetworkInfo();
+                await fetchRecords();
+            } catch (err) {
+                addLog(`Error restoring IP: ${err.message}`, 'error');
+            }
+        }
+
+        // Apply Simulated Caller IP
+        async function applySimulatedIp() {
+            const val = document.getElementById('simulatedIpInput').value.trim();
+            simulatedIp = val;
+            if (simulatedIp) {
+                addLog(`Simulated Caller IP activated: ${simulatedIp}`, 'warn');
+            } else {
+                addLog(`Cleared Simulated Caller IP. Using real connection IP.`, 'info');
+            }
+            await fetchNetworkInfo();
+            await fetchRecords();
+        }
+
+        // Reset Demo Config
+        async function resetDemoSystem() {
+            if (!confirm('Are you sure you want to reset records and whitelist to default demo values?')) return;
+            addLog(`Resetting demo system state...`, 'info');
+            try {
+                const res = await fetch('/api/system/reset-demo', { method: 'POST' });
+                const data = await res.json();
+                addLog(data.message, 'success');
+                simulatedIp = '';
+                document.getElementById('simulatedIpInput').value = '';
+                await fetchNetworkInfo();
+                await fetchRecords();
+            } catch (err) {
+                addLog(`Reset error: ${err.message}`, 'error');
+            }
+        }
+
+        // ---------------- CRUD OPERATIONS ---------------- //
+
+        // Fetch All Records
+        async function fetchRecords(search = '') {
+            addLog(`[API CALL] GET /api/records${search ? '?search=' + search : ''}`);
+            try {
+                const url = search ? `/api/records?search=${encodeURIComponent(search)}` : '/api/records';
+                const res = await apiFetch(url);
+                const data = await res.json();
+
+                if (res.status === 403) {
+                    addLog(`[HTTP 403 FORBIDDEN] Access Denied: Caller IP (${data.clientIp}) is blocked!`, 'error');
+                    updateGateStatus(false);
+                    renderRecords([]);
+                    return;
+                }
+
+                if (data.success) {
+                    addLog(`[HTTP 200 OK] Fetched ${data.count} records successfully`, 'success');
+                    updateGateStatus(true);
+                    allRecords = data.data;
+                    renderRecords(allRecords);
+                }
+            } catch (err) {
+                addLog(`Failed to fetch records: ${err.message}`, 'error');
+            }
+        }
+
+        // Render Records Table
+        function renderRecords(records) {
+            const tbody = document.getElementById('recordsTableBody');
+            if (!records || records.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-slate-500 italic">
+                            ${systemConfig.isAccessGranted === false 
+                                ? '⚠️ Access Blocked: 403 Forbidden. Whitelist your IP to view records.' 
+                                : 'No records found.'}
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = records.map(r => {
+                let statusBadge = 'bg-slate-700 text-slate-300';
+                if (r.status === 'Active') statusBadge = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                if (r.status === 'Maintenance') statusBadge = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                if (r.status === 'Disabled') statusBadge = 'bg-rose-500/20 text-rose-400 border border-rose-500/30';
+
+                return `
+                    <tr class="hover:bg-slate-900/60 transition group">
+                        <td class="py-3 px-3">
+                            <div class="font-bold text-white">${r.name}</div>
+                            <div class="text-[10px] text-slate-400 font-mono flex items-center gap-1.5 mt-0.5">
+                                <span>ID: ${r.id}</span>
+                                <span>•</span>
+                                <span>${r.description || 'No description'}</span>
+                            </div>
+                        </td>
+                        <td class="py-3 px-3 font-medium text-slate-300">${r.category}</td>
+                        <td class="py-3 px-3">
+                            <span class="px-2 py-0.5 rounded font-mono text-[10px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                                ${r.environment}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusBadge}">
+                                ${r.status}
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 text-right space-x-1">
+                            <button onclick="openEditModal('${r.id}')" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition font-medium" title="Edit">
+                                Edit
+                            </button>
+                            <button onclick="deleteRecord('${r.id}')" class="px-2 py-1 rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition font-medium" title="Delete">
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // Search records
+        let searchTimeout = null;
+        function handleSearch(term) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                fetchRecords(term);
+            }, 300);
+        }
+
+        // Modal Handlers
+        function openCreateModal() {
+            document.getElementById('modalTitle').innerText = 'Create New Record';
+            document.getElementById('recordIdInput').value = '';
+            document.getElementById('recordNameInput').value = '';
+            document.getElementById('recordCategoryInput').value = 'Background Task';
+            document.getElementById('recordEnvInput').value = 'AWS-Production';
+            document.getElementById('recordStatusInput').value = 'Active';
+            document.getElementById('recordDescInput').value = '';
+            document.getElementById('modalSubmitBtn').innerText = 'Create Record';
+            document.getElementById('recordModal').classList.remove('hidden');
+        }
+
+        function openEditModal(id) {
+            const record = allRecords.find(r => r.id === id);
+            if (!record) return;
+
+            document.getElementById('modalTitle').innerText = 'Edit Record (' + id + ')';
+            document.getElementById('recordIdInput').value = record.id;
+            document.getElementById('recordNameInput').value = record.name;
+            document.getElementById('recordCategoryInput').value = record.category;
+            document.getElementById('recordEnvInput').value = record.environment;
+            document.getElementById('recordStatusInput').value = record.status;
+            document.getElementById('recordDescInput').value = record.description || '';
+            document.getElementById('modalSubmitBtn').innerText = 'Update Record';
+            document.getElementById('recordModal').classList.remove('hidden');
+        }
+
+        function closeRecordModal() {
+            document.getElementById('recordModal').classList.add('hidden');
+        }
+
+        // Submit Record (Create or Update)
+        async function handleRecordSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('recordIdInput').value;
+            const payload = {
+                name: document.getElementById('recordNameInput').value.trim(),
+                category: document.getElementById('recordCategoryInput').value,
+                environment: document.getElementById('recordEnvInput').value,
+                status: document.getElementById('recordStatusInput').value,
+                description: document.getElementById('recordDescInput').value.trim()
+            };
+
+            const isEdit = Boolean(id);
+            const url = isEdit ? `/api/records/${id}` : '/api/records';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            addLog(`[API CALL] ${method} ${url}`);
+            try {
+                const res = await apiFetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (res.status === 403) {
+                    addLog(`[HTTP 403 FORBIDDEN] Record ${isEdit ? 'update' : 'creation'} blocked by IP whitelist policy!`, 'error');
+                    alert(`Access Denied (403 Forbidden):\nYour IP is not whitelisted to perform this operation.`);
+                    return;
+                }
+
+                if (data.success) {
+                    addLog(`[HTTP ${res.status}] Record ${isEdit ? 'updated' : 'created'} successfully!`, 'success');
+                    closeRecordModal();
+                    await fetchRecords();
+                } else {
+                    addLog(`Error: ${data.error}`, 'error');
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (err) {
+                addLog(`Request failed: ${err.message}`, 'error');
+            }
+        }
+
+        // Delete Record
+        async function deleteRecord(id) {
+            if (!confirm(`Are you sure you want to delete record ${id}?`)) return;
+
+            addLog(`[API CALL] DELETE /api/records/${id}`);
+            try {
+                const res = await apiFetch(`/api/records/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+
+                if (res.status === 403) {
+                    addLog(`[HTTP 403 FORBIDDEN] Deletion blocked by IP whitelist policy!`, 'error');
+                    alert(`Access Denied (403 Forbidden):\nYour IP is not authorized to delete records.`);
+                    return;
+                }
+
+                if (data.success) {
+                    addLog(`[HTTP 200 OK] Record ${id} deleted successfully!`, 'success');
+                    await fetchRecords();
+                } else {
+                    addLog(`Delete error: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                addLog(`Delete failed: ${err.message}`, 'error');
+            }
+        }
+
+        // Docs Modal Handlers
+        function openDocsModal() {
+            document.getElementById('docsModal').classList.remove('hidden');
+        }
+        function closeDocsModal() {
+            document.getElementById('docsModal').classList.add('hidden');
+        }
+
+        // Initial Boot
+        window.addEventListener('DOMContentLoaded', async () => {
+            addLog('Initializing dashboard & verifying IP connection...');
+            await fetchNetworkInfo();
+            await fetchRecords();
+        });
+    </script>
+</body>
+</html>
